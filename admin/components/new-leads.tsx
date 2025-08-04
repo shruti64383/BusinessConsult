@@ -8,12 +8,26 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { Search, Eye, Trash2, Phone, Mail, Calendar, Loader2, X, Edit } from "lucide-react"
 
+interface Leads {
+  leadId: Number;
+  name: string;
+  email: string;
+  phone: string;
+  service: string;
+  budget: Number;
+  message: string;
+  date: Date;
+  status: string;
+  priority: string;
+  businessType: string;
+}
+
 export function NewLeads() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [leads, setLeads] = useState([])
+  const [leads, setLeads] = useState<Leads[]>([]); // Properly typed state
   const [loading, setLoading] = useState(true)
-  const [actionLoading, setActionLoading] = useState<string | null>(null)
-  const [editingPriority, setEditingPriority] = useState<string | null>(null)
+  const [actionLoading, setActionLoading] = useState<Number | null>(null)
+  const [editingPriority, setEditingPriority] = useState<Number | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -22,92 +36,35 @@ export function NewLeads() {
 
   const fetchLeads = async () => {
     try {
-      setLoading(true)
-
-      try {
-        const response = await fetch("/api/leads")
-        if (response.ok && response.headers.get("content-type")?.includes("application/json")) {
-          const data = await response.json()
-          setLeads(data)
-        } else {
-          throw new Error("API not available")
-        }
-      } catch (apiError) {
-        console.log("Leads API not available, using mock data")
-        setLeads(getMockLeads())
+      setLoading(true);
+      const response = await fetch('http://localhost:5000/api/leads');
+    
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+    
+      const result = await response.json();
+    
+      // Match the structure from your backend response
+      if (result.success) {
+        setLeads(result.data); // Assuming result.data contains the array of leads
+        console.log("Fetched leads:", result.data);
+      } else {
+        console.error("Backend returned success:false", result.message);
+        setLeads([]); // Set empty array on backend failure
+      }    
     } catch (error) {
-      console.error("Error fetching leads:", error)
-      setLeads(getMockLeads())
-      toast({
-        title: "Info",
-        description: "Using demo data. Connect to database for real data.",
-      })
+      console.error('Error fetching leads:', error);
+      setLeads([]); // Ensure leads is always an array
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const getMockLeads = () => [
-    {
-      id: "LEAD001",
-      name: "Rohit Gupta",
-      email: "rohit.gupta@email.com",
-      phone: "+91 9876543210",
-      service: "Company Registration",
-      budget: "₹10,000 - ₹20,000",
-      message:
-        "I want to register my startup as a Private Limited Company. Need complete assistance with documentation.",
-      date: "2025-01-15",
-      status: "new",
-      priority: "medium", // Default priority, admin can change
-      businessType: "Technology Startup",
-    },
-    {
-      id: "LEAD002",
-      name: "Sunita Mehta",
-      email: "sunita.mehta@email.com",
-      phone: "+91 9876543211",
-      service: "GST Registration",
-      budget: "₹3,000 - ₹5,000",
-      message: "Need GST registration for my retail business. Already have company registration.",
-      date: "2025-01-14",
-      status: "contacted",
-      priority: "low", // Default priority, admin can change
-      businessType: "Retail",
-    },
-    {
-      id: "LEAD003",
-      name: "Vikram Singh",
-      email: "vikram.singh@email.com",
-      phone: "+91 9876543212",
-      service: "Trademark Registration",
-      budget: "₹20,000 - ₹30,000",
-      message: "Want to register trademark for my brand name and logo. Need complete trademark search and filing.",
-      date: "2025-01-13",
-      status: "new",
-      priority: "medium", // Default priority, admin can change
-      businessType: "Manufacturing",
-    },
-    {
-      id: "LEAD004",
-      name: "Anita Desai",
-      email: "anita.desai@email.com",
-      phone: "+91 9876543214",
-      service: "Legal Documentation",
-      budget: "₹8,000 - ₹15,000",
-      message: "Need help with partnership deed and other legal documents for my consulting business.",
-      date: "2025-01-16",
-      status: "new",
-      priority: "medium", // Default priority, admin can change
-      businessType: "Consulting",
-    },
-  ]
-
-  const handlePriorityChange = async (leadId: string, newPriority: string) => {
+  const handlePriorityChange = async (leadId: Number, newPriority: string) => {
     try {
       setActionLoading(leadId)
-      const response = await fetch(`/api/leads/${leadId}`, {
+      const response = await fetch(`http://localhost:5000/api/leads/${leadId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -116,7 +73,7 @@ export function NewLeads() {
       })
 
       if (response.ok) {
-        setLeads(leads.map((lead) => (lead.id === leadId ? { ...lead, priority: newPriority } : lead)))
+        setLeads(leads.map((lead) => (lead.leadId == leadId ? { ...lead, priority: newPriority } : lead)))
         toast({
           title: "Success",
           description: `Lead priority updated to ${newPriority}.`,
@@ -127,7 +84,7 @@ export function NewLeads() {
     } catch (error) {
       console.error("Error updating priority:", error)
       // Update locally even if API fails (for demo purposes)
-      setLeads(leads.map((lead) => (lead.id === leadId ? { ...lead, priority: newPriority } : lead)))
+      setLeads(leads.map((lead) => (lead.leadId === leadId ? { ...lead, priority: newPriority } : lead)))
       toast({
         title: "Updated",
         description: `Lead priority updated to ${newPriority} (demo mode).`,
@@ -138,15 +95,15 @@ export function NewLeads() {
     }
   }
 
-  const handleDelete = async (leadId: string) => {
+  const handleDelete = async (leadId: Number) => {
     try {
       setActionLoading(leadId)
-      const response = await fetch(`/api/leads/${leadId}`, {
+      const response = await fetch(`http://localhost:5000/api/leads/${leadId}`, {
         method: "DELETE",
       })
 
       if (response.ok) {
-        setLeads(leads.filter((lead) => lead.id !== leadId))
+        setLeads(leads.filter((lead) => lead.leadId !== leadId))
         toast({
           title: "Success",
           description: "Lead deleted successfully.",
@@ -157,7 +114,7 @@ export function NewLeads() {
     } catch (error) {
       console.error("Error deleting lead:", error)
       // Delete locally even if API fails (for demo purposes)
-      setLeads(leads.filter((lead) => lead.id !== leadId))
+      setLeads(leads.filter((lead) => lead.leadId !== leadId))
       toast({
         title: "Deleted",
         description: "Lead deleted (demo mode).",
@@ -167,10 +124,10 @@ export function NewLeads() {
     }
   }
 
-  const handleStatusUpdate = async (leadId: string, newStatus: string) => {
+  const handleStatusUpdate = async (leadId: Number, newStatus: string) => {
     try {
       setActionLoading(leadId)
-      const response = await fetch(`/api/leads/${leadId}`, {
+      const response = await fetch(`http://localhost:5000/api/leads${leadId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -179,7 +136,7 @@ export function NewLeads() {
       })
 
       if (response.ok) {
-        setLeads(leads.map((lead) => (lead.id === leadId ? { ...lead, status: newStatus } : lead)))
+        setLeads(leads.map((lead) => (lead.leadId === leadId ? { ...lead, status: newStatus } : lead)))
         toast({
           title: "Success",
           description: "Lead status updated successfully.",
@@ -190,7 +147,7 @@ export function NewLeads() {
     } catch (error) {
       console.error("Error updating lead status:", error)
       // Update locally even if API fails (for demo purposes)
-      setLeads(leads.map((lead) => (lead.id === leadId ? { ...lead, status: newStatus } : lead)))
+      setLeads(leads.map((lead) => (lead.leadId === leadId ? { ...lead, status: newStatus } : lead)))
       toast({
         title: "Updated",
         description: "Lead status updated (demo mode).",
@@ -228,7 +185,7 @@ export function NewLeads() {
     }
   }
 
-  const filteredLeads = leads.filter(
+  const filteredLeads = (leads || []).filter(
     (lead) =>
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -310,22 +267,22 @@ export function NewLeads() {
 
       <div className="grid gap-6">
         {filteredLeads.map((lead) => (
-          <Card key={lead.id} className="hover:shadow-md transition-shadow">
+          <Card key={lead.leadId.toLocaleString()} className="hover:shadow-md transition-shadow">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div>
                   <CardTitle className="text-lg">{lead.name}</CardTitle>
-                  <p className="text-sm text-gray-600 mt-1">Lead ID: {lead.id}</p>
+                  <p className="text-sm text-gray-600 mt-1">Lead ID: {lead.leadId.toLocaleString()}</p>
                 </div>
                 <div className="flex items-center space-x-2">
                   {/* Priority Management */}
-                  {editingPriority === lead.id ? (
+                  {editingPriority === lead.leadId ? (
                     <div className="flex items-center space-x-2">
                       <select
                         value={lead.priority}
-                        onChange={(e) => handlePriorityChange(lead.id, e.target.value)}
+                        onChange={(e) => handlePriorityChange(lead.leadId, e.target.value)}
                         className="px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={actionLoading === lead.id}
+                        disabled={actionLoading === lead.leadId}
                       >
                         <option value="high">High Priority</option>
                         <option value="medium">Medium Priority</option>
@@ -344,14 +301,14 @@ export function NewLeads() {
                     <div className="flex items-center space-x-1">
                       <Badge
                         className={`cursor-pointer ${getPriorityColor(lead.priority)}`}
-                        onClick={() => setEditingPriority(lead.id)}
+                        onClick={() => setEditingPriority(lead.leadId)}
                       >
                         {lead.priority} priority
                       </Badge>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setEditingPriority(lead.id)}
+                        onClick={() => setEditingPriority(lead.leadId)}
                         className="h-6 w-6 p-0"
                       >
                         <Edit className="w-3 h-3" />
@@ -375,7 +332,7 @@ export function NewLeads() {
                   </div>
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm">{lead.date}</span>
+                    <span className="text-sm">{lead.date.toLocaleString()}</span>
                   </div>
                 </div>
                 <div className="space-y-4">
@@ -385,7 +342,11 @@ export function NewLeads() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Budget Range:</p>
-                    <p className="text-sm text-gray-600">{lead.budget}</p>
+                    <p className="text-sm text-gray-600">{lead.budget.toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+  })}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-700">Business Type:</p>
@@ -402,8 +363,8 @@ export function NewLeads() {
                   <span className="text-sm text-gray-600">Status:</span>
                   <select
                     value={lead.status}
-                    onChange={(e) => handleStatusUpdate(lead.id, e.target.value)}
-                    disabled={actionLoading === lead.id}
+                    onChange={(e) => handleStatusUpdate(lead.leadId, e.target.value)}
+                    disabled={actionLoading === lead.leadId}
                     className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="new">New</option>
@@ -425,10 +386,10 @@ export function NewLeads() {
                     variant="outline"
                     size="sm"
                     className="text-red-600 hover:text-red-700 bg-transparent"
-                    onClick={() => handleDelete(lead.id)}
-                    disabled={actionLoading === lead.id}
+                    onClick={() => handleDelete(lead.leadId)}
+                    disabled={actionLoading === lead.leadId}
                   >
-                    {actionLoading === lead.id ? (
+                    {actionLoading === lead.leadId ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     ) : (
                       <Trash2 className="w-4 h-4 mr-2" />

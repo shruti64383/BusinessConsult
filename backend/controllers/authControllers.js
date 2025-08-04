@@ -1,6 +1,10 @@
 const User = require("../models/User");
+const Leads = require("../models/Leads")
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+
+console.log('Mongoose instance ID:', require('mongoose').instanceId);
+// Should be the same across all files
 
 exports.register = async (req, res) => {
     const { name, email, password, role } = req.body;
@@ -15,6 +19,19 @@ exports.register = async (req, res) => {
         const user = await User.create({ name, email, password, role: 'user' }); // no hashing here
 
         res.status(201).json({ msg: "User Created Successfully" });
+    } catch (error) {
+        console.error("Register Error:", error);
+        res.status(500).json({ msg: "Error registering user", error: error.message });
+    }
+};
+
+exports.lead = async (req, res) => {
+    const { name, email, phone, message } = req.body;
+    try {
+        
+        const user = await Leads.create({ name, email, phone, message}); // no hashing here
+
+        res.status(201).json({ msg: "Lead Created Successfully" });
     } catch (error) {
         console.error("Register Error:", error);
         res.status(500).json({ msg: "Error registering user", error: error.message });

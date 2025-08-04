@@ -1,4 +1,5 @@
-import mongoose from 'mongoose';
+const mongoose = require("mongoose")
+ 
 
 const leadSchema = new mongoose.Schema({
   // Auto-incremented unique ID
@@ -30,11 +31,12 @@ const leadSchema = new mongoose.Schema({
   service: {
     type: String,
     enum: ['Web Development', 'Consulting', 'Marketing', 'Design', 'Other'],
-    required: true
+    default: 'Other'
   },
   budget: {
     type: Number,
-    min: [0, 'Budget cannot be negative']
+    min: [0, 'Budget cannot be negative'],
+    default: 0
   },
   
   // Automatic timestamp
@@ -63,12 +65,9 @@ const leadSchema = new mongoose.Schema({
   
   // Business info
   business: {
-    name: String,
-    industry: String,
-    size: {
-      type: String,
-      enum: ['Small', 'Medium', 'Large', 'Enterprise']
-    }
+    type: String,
+      enum: ['Small', 'Medium', 'Large', 'Enterprise'],
+    default: 'Medium'
   }
 });
 
@@ -77,17 +76,17 @@ leadSchema.pre('save', async function(next) {
   if (!this.isNew) return next();
   
   try {
-    const counter = await Counter.findByIdAndUpdate(
-      { _id: 'leadId' },
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
-    );
-    this.leadId = counter.seq;
+    const result = await Leads.findOne()
+      .sort('-leadId') // Sort in descending order
+      .select('leadId') // Only select the leadId field
+      .lean(); // Convert to plain JS object
+     
+    this.leadId = result ? result.leadId+1 : 0;
     next();
   } catch (err) {
     next(err);
   }
 });
 
-const Lead = mongoose.model('Lead', leadSchema);
-module.exports = Lead
+const Leads = mongoose.model("Leads", leadSchema);
+module.exports = Leads

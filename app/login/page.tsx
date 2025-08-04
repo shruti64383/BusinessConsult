@@ -101,7 +101,7 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(user)); // optional
 
 if (user?.role === "admin") {
-  router.push("/admin/app/page.tsx");
+  router.push("http://localhost:3001");
 } else if (user?.role === "user") {
   router.push("/userDashboard");
 } else {

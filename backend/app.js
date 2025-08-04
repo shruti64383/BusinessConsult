@@ -19,6 +19,7 @@ const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const userRoutes = require("./routes/userRoutes");       // ✅ Added
 const taskRoutes = require("./routes/taskRoutes");       // ✅ Will handle /api/tasks
+const leadRoutes = require("./routes/leadRoutes");
 
 dotenv.config(); // Load environment variables
 
@@ -39,6 +40,7 @@ app.use("/api/tasks", taskRoutes);      // ✅ Task route added
 app.use('/uploads', express.static('uploads')); // Serve static files
 app.use('/api/upload-documents', require('./routes/uploadRoutes'));
 app.use('/api/services', serviceRoutes);
+app.use('/api/leads', leadRoutes)
 
 // Test route
 app.get("/", (req, res) => {

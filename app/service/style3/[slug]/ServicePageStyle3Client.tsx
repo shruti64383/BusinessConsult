@@ -10,7 +10,12 @@ import { BsWhatsapp } from "react-icons/bs"
 import { servicesData } from "@/lib/services-data"
 import { motion, useInView } from "framer-motion"
 import { useRef } from "react"
-
+import axiosInstance from "@/utils/axiosInstance"
+import { useState } from "react"
+import { User, Mail, MessageSquare } from 'lucide-react';
+import { Loader2 } from 'lucide-react'; // For loading spinner
+import { ChangeEvent } from 'react';
+import { useRouter } from 'next/navigation';
 // Import the animated components
 import AnimatedBenefitsSection from "@/components/animated-benefits-section"
 import AnimatedProcessSection from "@/components/animated-process-section"
@@ -23,7 +28,143 @@ type ServicePageStyle3ClientProps = {
 export default function ServicePageStyle3Client({ params }: ServicePageStyle3ClientProps) {
   const service = servicesData.find((service) => service.slug === params.slug)
   const containerRef = useRef(null)
+  const router = useRouter();
   const isInView = useInView(containerRef, { once: true, amount: 0.1 })
+  const [formData, setFormData] = useState({
+      name: "",
+      email: "",
+      phone: "",
+      message: ""
+  })
+  const [errors, setErrors] = useState({
+      name: "",
+      email: "",
+      phone: "",
+      message: ""
+    })
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const validateForm = () => {
+    let isValid = true;
+    const newErrors = { ...errors };
+
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+      isValid = false;
+    } else {
+      newErrors.name = '';
+    }
+
+    // Phone validation
+    const phoneRegex = /^[\d\s\-()+]{10,20}$/;
+    if (!formData.phone) {
+      newErrors.phone = 'Phone number is required';
+      isValid = false;
+    } else if (!phoneRegex.test(formData.phone)) {
+      newErrors.phone = 'Please enter a valid phone number';
+      isValid = false;
+    } else {
+      newErrors.phone = '';
+    }
+
+    // Email validation
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+      isValid = false;
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email';
+      isValid = false;
+    } else {
+      newErrors.email = '';
+    }
+
+    // Message validation
+    if (!formData.message.trim()) {
+      newErrors.message = 'Please describe your requirements';
+      isValid = false;
+    } else {
+      newErrors.message = '';
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Clear error when user types
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  // const handleSubmit = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+
+  //   if (!validateForm()) return;
+
+  //   try {
+  //     const response = await axiosInstance.post("http://localhost:5000/api/auth/lead", {
+  //     name: formData.name,
+  //     email: formData.email,
+  //     phone: formData.phone,
+  //     message: formData.message
+  //   });
+
+  //   alert(response.data.msg || "Submission successful");
+  //   } catch (error: any) {
+  //   alert(error.response?.data?.msg || "Submission failed");
+  //   }
+  // };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    if (validateForm()) {
+      try {
+        const response = await fetch('http://localhost:5000/api/auth/lead', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        });
+
+        if (response.ok) {
+          router.push('/thank-you');
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Submission failed');
+        }
+      } catch (error: unknown) {
+        let errorMessage = 'Failed to submit inquiry';
+  
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  } else if (typeof error === 'string') {
+    errorMessage = error;
+  }
+        console.error('Submission error:', error);
+        setErrors(prev => ({ ...prev, form: errorMessage }));
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      setIsSubmitting(false);
+    }
+  };
 
   // If service not found, return 404
   if (!service) {
@@ -274,7 +415,7 @@ export default function ServicePageStyle3Client({ params }: ServicePageStyle3Cli
                   <p className="text-sm text-white/80 mt-1">Fill the form for expert assistance</p>
                 </div>
 
-                <form className="space-y-4">
+                {/* <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
                     <Input id="name" name="name" placeholder="Your Name" required />
                   </div>
@@ -294,7 +435,124 @@ export default function ServicePageStyle3Client({ params }: ServicePageStyle3Cli
                   <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
                     Submit Inquiry
                   </Button>
-                </form>
+                </form> */}
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Name Field */}
+      <div className="space-y-1">
+        <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          Your Name
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <User className="h-5 w-5 text-gray-400" />
+          </div>
+          <Input
+            id="name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            value={formData.name}
+            onChange={handleChange}
+            className={`pl-10 ${errors.name ? "border-red-500" : ""}`}
+            placeholder="Enter your full name"
+            disabled={isSubmitting}
+          />
+        </div>
+        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+      </div>
+
+      {/* Phone Field */}
+      <div className="space-y-1">
+        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+          Phone Number
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Phone className="h-5 w-5 text-gray-400" />
+          </div>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            autoComplete="tel"
+            value={formData.phone}
+            onChange={handleChange}
+            className={`pl-10 ${errors.phone ? "border-red-500" : ""}`}
+            placeholder="Enter your phone number"
+            disabled={isSubmitting}
+          />
+        </div>
+        {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
+      </div>
+
+      {/* Email Field */}
+      <div className="space-y-1">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          Email Address
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Mail className="h-5 w-5 text-gray-400" />
+          </div>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            autoComplete="email"
+            value={formData.email}
+            onChange={handleChange}
+            className={`pl-10 ${errors.email ? "border-red-500" : ""}`}
+            placeholder="Enter your email"
+            disabled={isSubmitting}
+          />
+        </div>
+        {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+      </div>
+
+      {/* Message Field */}
+      <div className="space-y-1">
+        <label htmlFor="message" className="block text-sm font-medium text-gray-700">
+          Your Requirements
+        </label>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 pt-3 flex items-start pointer-events-none">
+            <MessageSquare className="h-5 w-5 text-gray-400" />
+          </div>
+          <Textarea
+            id="message"
+            name="message"
+            value={formData.message}
+            onChange={handleChange}
+            className={`pl-10 ${errors.message ? "border-red-500" : ""}`}
+            placeholder="Describe your requirements"
+            rows={3}
+            disabled={isSubmitting}
+          />
+        </div>
+        {errors.message && <p className="text-red-500 text-xs mt-1">{errors.message}</p>}
+      </div>
+
+      {/* Form-level error
+      {errors.form ? (
+  <p className="text-red-500 text-sm" aria-live="assertive">
+    {errors.form}
+  </p>
+) : null} */}
+
+      <Button 
+        type="submit" 
+        className="w-full bg-primary hover:bg-primary/90"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <span className="flex items-center justify-center">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Submitting...
+          </span>
+        ) : 'Submit Inquiry'}
+      </Button>
+    </form>
 
                 {/* Contact Options */}
                 <div className="mt-6 pt-6 border-t border-gray-200">

@@ -35,7 +35,7 @@ export function Dashboard() {
       let services = []
 
       try {
-        const leadsResponse = await fetch("/api/leads")
+        const leadsResponse = await fetch("http://localhost:5000/api/leads")
         if (leadsResponse.ok && leadsResponse.headers.get("content-type")?.includes("application/json")) {
           leads = await leadsResponse.json()
         }
